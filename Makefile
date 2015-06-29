@@ -8,7 +8,7 @@ F_USB = $(F_CPU)
 AVRDUDE_PROGRAMMER = avr109
 
 TARGET       = TwiKeyboard
-SRC          = Main.c
+SRC          = Main.c $(LUFA_SRC_SERIAL)
 OPTIMIZATION = s
 CC_FLAGS     = -Wall -Wextra -Werror
 
