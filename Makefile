@@ -8,7 +8,7 @@ F_USB = $(F_CPU)
 AVRDUDE_PROGRAMMER = avr109
 
 TARGET       = TwiKeyboard
-SRC          = Main.c Descriptors.c $(LUFA_SRC_SERIAL) $(LUFA_SRC_USB)
+SRC          = Main.c HidSetup.c Descriptors.c $(LUFA_SRC_SERIAL) $(LUFA_SRC_USB) $(LUFA_SRC_USBCLASS)
 OPTIMIZATION = s
 CC_FLAGS     = -Wall -Wextra -Werror -DUSE_LUFA_CONFIG_HEADER
 

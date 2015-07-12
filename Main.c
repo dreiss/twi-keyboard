@@ -1,3 +1,4 @@
+#include <avr/io.h>
 #include <avr/wdt.h>
 #include <avr/power.h>
 
@@ -7,6 +8,10 @@
 
 
 #define SERIAL_SPEED (115200)
+
+
+// HID device config and state.  Defined in HidSetup.c.
+extern USB_ClassInfo_HID_Device_t kbd_device;
 
 
 static void setup_hardware(void);
@@ -26,6 +31,7 @@ int main(void) {
       Serial_SendByte('\n');
     }
 
+    HID_Device_USBTask(&kbd_device);
     USB_USBTask();
   }
 }
@@ -39,8 +45,45 @@ static void setup_hardware(void) {
 
   Serial_Init(SERIAL_SPEED, /* double speed */ false);
 
-  // TODO: Maybe force re-enumeration like the Trinket HidCombo demo?
-  //Delay_MS(500);
+  // Force re-enumeration like the Trinket HidCombo demo.
+  // Without the sleep, the computer still thinks the bootloader is attached.
+  Delay_MS(500);
   USB_Init();
   GlobalInterruptEnable();
+}
+
+bool CALLBACK_HID_Device_CreateHIDReport(
+    USB_ClassInfo_HID_Device_t* const HIDInterfaceInfo,
+    uint8_t* const ReportID,
+    const uint8_t ReportType,
+    void* ReportData,
+    uint16_t* const ReportSize) {
+  (void)HIDInterfaceInfo;
+  (void)ReportID;
+  (void)ReportType;
+
+  USB_KeyboardReport_Data_t* kbd_report = (USB_KeyboardReport_Data_t*)ReportData;
+
+  // Leonardo digital pin 7
+  PORTE |= _BV(PE6);
+  if (!(PINE & _BV(PE6))) {
+    kbd_report->KeyCode[0] = HID_KEYBOARD_SC_A;
+  }
+
+  *ReportSize = sizeof(USB_KeyboardReport_Data_t);
+  return false;
+}
+
+void CALLBACK_HID_Device_ProcessHIDReport(
+    USB_ClassInfo_HID_Device_t* const HIDInterfaceInfo,
+    const uint8_t ReportID,
+    const uint8_t ReportType,
+    const void* ReportData,
+    const uint16_t ReportSize) {
+  (void)HIDInterfaceInfo;
+  (void)ReportID;
+  (void)ReportType;
+
+  (void)ReportData;
+  (void)ReportSize;
 }
