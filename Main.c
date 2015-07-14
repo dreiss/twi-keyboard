@@ -64,11 +64,32 @@ bool CALLBACK_HID_Device_CreateHIDReport(
 
   USB_KeyboardReport_Data_t* kbd_report = (USB_KeyboardReport_Data_t*)ReportData;
 
-  // Leonardo digital pin 7
+  PORTB |= _BV(PB4) | _BV(PB5) | _BV(PB6) | _BV(PB7);
+  PORTC |= _BV(PC6);
+  PORTD |= _BV(PD0) | _BV(PD1) | _BV(PD4) | _BV(PD6) | _BV(PD7);
   PORTE |= _BV(PE6);
-  if (!(PINE & _BV(PE6))) {
-    kbd_report->KeyCode[0] = HID_KEYBOARD_SC_A;
-  }
+
+#define key(port, bit, code) do { \
+    if (!(CONCAT_EXPANDED(PIN, port) & \
+          _BV(CONCAT_EXPANDED(CONCAT_EXPANDED(P, port), bit)))) { \
+      kbd_report->KeyCode[0] = CONCAT_EXPANDED(HID_KEYBOARD_SC_, code); \
+    } \
+} while (0)
+
+  key(B, 4, UP_ARROW);
+  key(B, 5, DOWN_ARROW);
+  key(B, 6, LEFT_ARROW);
+  key(B, 7, RIGHT_ARROW);
+  key(D, 6, KEYPAD_ENTER);
+
+  key(D, 1, ESCAPE);
+  key(D, 0, F12);
+  key(D, 4, APPLICATION);
+  key(C, 6, MEDIA_PREVIOUS_TRACK);
+  key(D, 7, SPACE);
+  key(E, 6, MEDIA_NEXT_TRACK);
+
+#undef key
 
   *ReportSize = sizeof(USB_KeyboardReport_Data_t);
   return false;
