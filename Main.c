@@ -85,7 +85,14 @@ static void setup_hardware(void) {
 
   // Force re-enumeration like the Trinket HidCombo demo.
   // Without the sleep, the computer still thinks the bootloader is attached.
-  Delay_MS(500);
+  // Blink the LEDs during the sleep so we know the device is ready.
+  LEDs_SetAllLEDs(LEDS_ALL_LEDS);
+  Delay_MS(200);
+  LEDs_SetAllLEDs(LEDS_NO_LEDS);
+  Delay_MS(100);
+  LEDs_SetAllLEDs(LEDS_ALL_LEDS);
+  Delay_MS(200);
+  LEDs_SetAllLEDs(LEDS_NO_LEDS);
 
   // Set up Timer1 to run at CLK/1024, or 1 tick per 128 us at 8 MHz.
   TCCR1A = 0;
