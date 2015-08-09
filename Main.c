@@ -4,6 +4,7 @@
 #include <avr/io.h>
 #include <avr/wdt.h>
 #include <avr/power.h>
+#include <avr/eeprom.h>
 #include <util/twi.h>
 
 #include <LUFA/Drivers/Board/LEDs.h>
@@ -14,7 +15,8 @@
 #define SERIAL_SPEED (115200)
 
 
-static const uint8_t TWI_ADDRESS  = 'k';
+static const uint8_t DEFAULT_TWI_ADDRESS  = 'k';
+static uint8_t eep_address_space[1<<5] EEMEM;
 
 // Convert ms to Timer/Counter1 ticks.  1024 factor is from prescaler.
 #define MS_TO_TICKS(ms) (ms * (F_CPU / 1000) / 1024)
@@ -51,6 +53,7 @@ extern USB_ClassInfo_HID_Device_t kbd_device;
 
 // Forward declarations.
 static void setup_hardware(void);
+static uint8_t determine_twi_address(void);
 static void check_usb_device_state(void);
 static void drive_logic(void);
 static bool process_cmd(void);
@@ -95,11 +98,48 @@ static void setup_hardware(void) {
   PORTD &= ~_BV(PD1);
   // Set up TWI as a slave with ACKs and interrupts enabled,
   // but ignoring General Calls.
-  TWAR = (TWI_ADDRESS << 1);
+  uint8_t twi_address = determine_twi_address();
+  TWAR = (twi_address << 1);
   TWCR = _BV(TWEN) | _BV(TWIE) | _BV(TWINT) | _BV(TWEA);
 
   USB_Init();
   GlobalInterruptEnable();
+}
+
+static uint8_t determine_twi_address(void) {
+  // The eep_address_space array occupies 2N bytes, which make up N "cells".
+  // Each cell consists of an "indicator" byte at offset k,
+  // and a "value" byte at offset k+N.
+  // Our I2C address is the "value" of the last cell
+  // whose "indicator" is neither 0 nor 0xff.
+  // This approach gives us a 16x increase in write durability.
+  // We can start out with indicator 0 = 0x33 (or whatever)
+  // and write thousands of addresses to value 0.
+  // When the value 0 cell wears out,
+  // we just set indicator 1 to 0x33
+  // and start writing our address to value 1.
+  const uint8_t num_cells = sizeof(eep_address_space) >> 1;
+
+  uint8_t address_offset = 0xff;
+
+  // Find the last active indicator.
+  // We don't break out early, so the runtime of this loop
+  // is mostly constant, regardless of which cell we are using.
+  for (uint8_t addr = 0; addr < num_cells; ++addr) {
+    uint8_t flag = eeprom_read_byte(&eep_address_space[addr]);
+    if (flag == 0 || flag == 0xff) {
+      continue;
+    }
+    address_offset = addr;
+  }
+
+  // If we found an active indicator, read its value.
+  // (This does create startup variance between
+  // default and non-defaul addresses.)
+  if (address_offset != 0xff) {
+    return eeprom_read_byte(&eep_address_space[address_offset + num_cells]);
+  }
+  return DEFAULT_TWI_ADDRESS;
 }
 
 static void check_usb_device_state(void) {
