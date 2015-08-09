@@ -106,6 +106,20 @@ static void setup_hardware(void) {
   GlobalInterruptEnable();
 }
 
+static void reset_to_bootloader(void) {
+  // Stop all interrupts.  We want total control for the reboot procedure.
+  cli();
+  // The Leonardo bootloader uses this as a flag to indicate that it should
+  // not jump directly into user code.
+  // The proper thing to do would be to use linker tricks to allocate
+  // a global variable at this address, but since we've stopped
+  // all other functions, this won't do any harm.
+  (*(uint16_t*)0x0800) = 0x7777;
+  // Enable the watchdog with the minimum timeout and wait for reset.
+  wdt_enable(WDTO_15MS);
+  for (;;);
+}
+
 static uint8_t determine_twi_address(void) {
   // The eep_address_space array occupies 2N bytes, which make up N "cells".
   // Each cell consists of an "indicator" byte at offset k,
@@ -198,6 +212,11 @@ static bool process_cmd(void) {
   switch (twi_cmd) {
     case 0:
       return false;
+
+    case 0x02:
+      reset_to_bootloader();
+      // Unreachable.
+      break;
 
 #define key(cmd, len, code) \
   case cmd: \
