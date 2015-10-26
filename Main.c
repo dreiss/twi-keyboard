@@ -22,7 +22,7 @@ static uint8_t eep_address_space[1<<5] EEMEM;
 #define MS_TO_TICKS(ms) (ms * (F_CPU / 1000) / 1024)
 static const uint16_t KEY_RELEASE_TIME_TICKS = MS_TO_TICKS(50);
 static const uint16_t NORMAL_KEYPRESS_TIME_TICKS = MS_TO_TICKS(50);
-static const uint16_t LONG_KEYPRESS_TIME_TICKS = MS_TO_TICKS(2000);
+static const uint16_t LONG_KEYPRESS_TIME_TICKS = MS_TO_TICKS(300);
 #undef MS_TO_TICKS
 
 enum {
