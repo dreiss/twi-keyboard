@@ -46,6 +46,8 @@ static uint8_t twi_cmd;
 static uint8_t pressed_code;
 // Timestamp in Timer/Counter1 at which we should transition states.
 static uint16_t transition_time;
+// Track progress of "blink LEDs" command.
+static uint16_t leds_iter;
 
 // HID device config and state.  Defined in HidSetup.c.
 extern USB_ClassInfo_HID_Device_t kbd_device;
@@ -55,6 +57,7 @@ extern USB_ClassInfo_HID_Device_t kbd_device;
 static void setup_hardware(void);
 static uint8_t determine_twi_address(void);
 static void check_usb_device_state(void);
+static void drive_leds(void);
 static void drive_logic(void);
 static bool process_cmd(void);
 
@@ -64,6 +67,7 @@ int main(void) {
 
   for (;;) {
     check_usb_device_state();
+    drive_leds();
     drive_logic();
     HID_Device_USBTask(&kbd_device);
     USB_USBTask();
@@ -168,6 +172,34 @@ static void check_usb_device_state(void) {
   }
 }
 
+// Driver for the blink LEDs command.
+// Rather than depending on a hardware timer,
+// just use the number of iterations of our main loop as a coarse timer.
+// Setting leds_iter to 1 will start the blinks.
+static void drive_leds(void) {
+  if (leds_iter == 0) {
+    return;
+  }
+  switch (leds_iter++) {
+    case 1:
+      LEDs_SetAllLEDs(LEDS_LED1);
+      break;
+    case 15000:
+      LEDs_SetAllLEDs(LEDS_LED2);
+      break;
+    case 22000:
+      LEDs_SetAllLEDs(LEDS_LED1);
+      break;
+    case 29000:
+      LEDs_SetAllLEDs(LEDS_LED2);
+      break;
+    case 44000:
+      LEDs_SetAllLEDs(LEDS_NO_LEDS);
+      leds_iter = 0;
+      break;
+  }
+}
+
 static inline void reset_timer(void) {
   TCNT1 = 0;
   TIFR1 = _BV(TOV1);
@@ -203,15 +235,22 @@ static void drive_logic(void) {
   }
 }
 
-// Examine twi_cmd and handle it:
-// - If 0, so command has been sent.  Return false.
-// - If a valid command, update pressed_code and transition_time,
+// Examine twi_cmd and handle it.
+// Returns true if we received a valid keypress command.
+// - If 0, no command has been sent.  Return false.
+// - If a valid key command, update pressed_code and transition_time,
 //   and return true.
-// - Else, clear the invalid command and return false.
+// - Else, clear the invalid (or non-key) command and return false.
 static bool process_cmd(void) {
   switch (twi_cmd) {
     case 0:
       return false;
+
+    case 0x01:
+      // Enable the LED blink, but then break so this doesn't get treated
+      // as a valid command.
+      leds_iter = 1;
+      break;
 
     case 0x02:
       reset_to_bootloader();
