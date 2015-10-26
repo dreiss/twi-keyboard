@@ -1,5 +1,5 @@
 /TwiKeyboard.*
 /*.d
 /*.o
-/Descriptors.c
+/Descriptors.inc
 /Descriptors.h

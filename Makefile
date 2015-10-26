@@ -30,17 +30,14 @@ include $(LUFA_PATH)/Build/lufa_atprogram.mk
 
 
 # Copy descriptors from LUFA sample.
-# (Note, this needs to come after the includes.)
-# This is a pretty typical pattern for generated source files,
-# but (unfortunately), it causes a "redefined command" warning
-# with LUFA's build system, and there is no way for me to add them
-# to "make clean".
-# TODO: Send a patch upstream to fix this.
 Descriptors.h:
 	cp $(LUFA_PATH)/../Demos/Device/ClassDriver/Keyboard/$@ $@
 
-Descriptors.c: Descriptors.h fix-descriptors.sed
-	sed -f fix-descriptors.sed < $(LUFA_PATH)/../Demos/Device/ClassDriver/Keyboard/$@ > $@
+Descriptors.inc: Descriptors.h fix-descriptors.sed
+	sed -f fix-descriptors.sed < $(LUFA_PATH)/../Demos/Device/ClassDriver/Keyboard/Descriptors.c > $@
 
-full-clean:
-	$(RM) Descriptors.c Descriptors.h
+Descriptors.o: Descriptors.inc
+
+clean: clean-generated
+clean-generated:
+	$(RM) Descriptors.inc Descriptors.h
